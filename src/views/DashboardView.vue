@@ -1,4 +1,3 @@
-<!-- src/views/DashboardView.vue -->
 <template>
   <div class="p-8">
     <h1 class="text-3xl font-bold">仪表盘</h1>

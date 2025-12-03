@@ -7,7 +7,12 @@ const routes = [
     path: '/login',
     name: 'Login',
     // 稍后我们会创建这个视图组件
-    component: () => import('@/views/LoginView.tsx'),
+    component: () => import('@/views/LoginView.vue'),
+  },
+  {
+    path: '/register',
+    name: 'Register',
+    component: () => import('@/views/RegisterView.vue'),
   },
   {
     path: '/',
@@ -27,7 +32,7 @@ const router = createRouter({
 });
 
 // --- 全局前置守卫 (Navigation Guard) ---
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, _, next) => {
   const authStore = useAuthStore();
 
   // 1. 检查路由是否需要认证

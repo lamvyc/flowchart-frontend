@@ -11,11 +11,17 @@ export interface LoginResponse {
   token_type: string;
 }
 
+export interface RegisterData {
+  username: string;
+  password: string;
+  email: string;
+}
+
 /**
  * 用户注册 API
  * @param data {username, password}
  */
-export function register(data: unknown): Promise<User> {
+export function register(data: RegisterData): Promise<User> {
   return service({
     url: '/auth/register',
     method: 'post',
