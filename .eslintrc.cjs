@@ -10,16 +10,16 @@ module.exports = {
     node: true,
   },
   extends: [
-    'eslint:recommended',               // ESLint 官方推荐的基本规则
-    'plugin:vue/vue3-essential',        // Vue 3 的核心规则
-    'plugin:@typescript-eslint/recommended',   // TypeScript 的推荐规则
-    'plugin:prettier/recommended',      // **必须是最后一个**，用于集成 Prettier 并禁用冲突规则
+    'eslint:recommended', // ESLint 官方推荐的基本规则
+    'plugin:vue/vue3-essential', // Vue 3 的核心规则
+    'plugin:@typescript-eslint/recommended', // TypeScript 的推荐规则
+    'plugin:prettier/recommended', // **必须是最后一个**，用于集成 Prettier 并禁用冲突规则
   ],
 
   // 注册需要使用的插件
   plugins: [
-    'vue',                      // 注册 'vue' 插件
-    '@typescript-eslint',       // 注册 'typescript-eslint' 插件
+    'vue', // 注册 'vue' 插件
+    '@typescript-eslint', // 注册 'typescript-eslint' 插件
   ],
 
   // ESLint 的解析器配置
