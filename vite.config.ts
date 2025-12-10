@@ -19,7 +19,9 @@ export default defineConfig({
       ],
     }),
   ],
-
+  optimizeDeps: {
+    include: ['@antv/x6'],
+  },
   // 开发服务器代理，解决跨域问题
   server: {
     proxy: {

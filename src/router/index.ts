@@ -23,7 +23,14 @@ const routes = [
       requiresAuth: true, // ✨ 添加元信息，表示这个路由需要认证
     },
   },
-  // 在这里可以添加其他路由，比如 /register
+  {
+    path: '/diagrams/:id',
+    name: 'Editor',
+    component: () => import('@/views/EditorView.vue'),
+    meta: {
+      requiresAuth: true,
+    },
+  },
 ];
 
 const router = createRouter({

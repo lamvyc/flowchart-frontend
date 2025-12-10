@@ -16,7 +16,8 @@ export interface Diagram {
 
 // 创建新图时，我们只需要一个名字
 export interface CreateDiagramData {
-  name: string;
+  title: string;
+  content: object;
 }
 
 /**

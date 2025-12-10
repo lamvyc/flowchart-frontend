@@ -83,8 +83,8 @@ const router = useRouter();
 const columns = [
   {
     title: '名称',
-    dataIndex: 'name',
-    key: 'name',
+    dataIndex: 'title',
+    key: 'title',
     width: '200px',
   },
   {
@@ -110,20 +110,28 @@ const showCreateModal = () => {
 };
 
 const handleModalOk = async () => {
-  if (!newDiagramName.value.trim()) {
+  const name = newDiagramName.value.trim();
+  if (!name) {
     return message.error('名称不能为空！');
   }
-  await diagramStore.createNewDiagram({ name: newDiagramName.value });
+
+  await diagramStore.createNewDiagram({
+    title: name,
+    content: {},
+  });
+
   isModalVisible.value = false;
 };
 
 // --- 核心操作 ---
 
 const handleEdit = (id: number) => {
-  console.log('准备编辑流程图，ID:', id);
-  // 下一步我们将在这里实现跳转
-  // router.push({ name: 'Editor', params: { id } });
-  message.info('编辑功能正在快马加鞭地开发中... 🚀');
+  // 使用 router.push 进行编程式导航
+  // 跳转到名为 'Editor' 的路由，并带上 id 作为路由参数
+  router.push({
+    name: 'Editor',
+    params: { id },
+  });
 };
 
 const handleDelete = (id: number) => {
