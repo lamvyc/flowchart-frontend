@@ -31,9 +31,19 @@
     </header>
 
     <!-- 编辑器主区域 -->
-    <main class="flex-1 bg-gray-200">
-      <!-- AntV X6 的画布将在这里渲染 -->
-      <div id="canvas-container" ref="canvasContainer" class="w-full h-full"></div>
+    <main class="flex-1 flex overflow-hidden">
+      <!-- 1. 左侧组件面板 (Stencil) -->
+      <aside class="w-56 bg-white border-r border-gray-200 flex-shrink-0">
+        <h2 class="text-center text-lg font-semibold py-3 border-b">组件</h2>
+        <!-- Stencil 的容器 -->
+        <div id="stencil-container" ref="stencilContainer"></div>
+      </aside>
+
+      <!-- 2. 右侧画布区域 -->
+      <div class="flex-1 relative">
+        <!-- 画布的容器 -->
+        <div id="canvas-container" ref="canvasContainer" class="w-full h-full"></div>
+      </div>
     </main>
   </div>
 </template>
@@ -43,21 +53,19 @@ import { onMounted, onBeforeUnmount, ref, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import { Spin, Result, Button, message } from 'ant-design-vue';
 import { Graph } from '@antv/x6';
+import { Stencil } from '@antv/x6-plugin-stencil';
 import { getDiagramById, updateDiagram } from '@/api/diagram';
 import type { Diagram } from '@/api/diagram';
 
-// 重命名 antd 组件
 const ASpin = Spin;
 const AResult = Result;
 const AButton = Button;
-
 const route = useRoute();
 const isLoading = ref(true);
 const isSaving = ref(false);
 const currentDiagram = ref<Diagram | null>(null);
-
-// X6 相关引用
 const canvasContainer = ref<HTMLElement | null>(null);
+const stencilContainer = ref<HTMLElement | null>(null);
 let graph: Graph | null = null;
 
 /**
@@ -65,35 +73,51 @@ let graph: Graph | null = null;
  */
 const initGraph = () => {
   if (!canvasContainer.value) return;
-
   graph = new Graph({
     container: canvasContainer.value,
     grid: true,
     autoResize: true,
-    // 开启节点和边的移动、缩放等交互
-    interacting: {
-      nodeMovable: true,
-    },
+    interacting: { nodeMovable: true },
   });
 
-  // ✨ 关键修正：检查 content 是否有效
-  if (
-    currentDiagram.value &&
-    currentDiagram.value.content &&
-    Object.keys(currentDiagram.value.content).length > 0
-  ) {
-    // 如果 content 有效，则从 JSON 加载
-    graph.fromJSON(currentDiagram.value.content);
-  } else {
-    // 如果是新图或 content 为空，添加一个默认节点
-    graph.addNode({
-      x: 300,
-      y: 200,
-      width: 120,
-      height: 60,
-      label: '开始',
-      shape: 'rect',
+  if (stencilContainer.value && graph) {
+    const stencil = new Stencil({
+      title: '基础节点',
+      target: graph,
+      stencilGraphWidth: 200,
+      stencilGraphHeight: 300,
+      groups: [{ name: 'basic', title: '基础流程图' }],
     });
+    stencilContainer.value.appendChild(stencil.container);
+
+    // ✨ v2: 使用 graph.createNode() 创建节点
+    const rect = graph.createNode({
+      shape: 'rect',
+      width: 100,
+      height: 40,
+      label: '矩形',
+    });
+    const circle = graph.createNode({
+      shape: 'circle',
+      width: 60,
+      height: 60,
+      label: '圆形',
+    });
+    const rhombus = graph
+      .createNode({
+        shape: 'rect',
+        width: 80,
+        height: 80,
+        label: '判断',
+        attrs: { body: { rx: 10, ry: 10 } },
+      })
+      .rotate(45);
+
+    stencil.load([rect.clone(), circle.clone(), rhombus.clone()], 'basic');
+  }
+
+  if (currentDiagram.value?.content && Object.keys(currentDiagram.value.content).length > 0) {
+    graph.fromJSON(currentDiagram.value.content);
   }
 };
 

@@ -17,8 +17,9 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,vue}\""
   },
   "dependencies": {
-    "@antv/x6": "^3.1.0",
-    "@antv/x6-vue-shape": "^3.0.2",
+    "@antv/x6": "^2.18.1",
+    "@antv/x6-plugin-stencil": "^2.1.5",
+    "@antv/x6-vue-shape": "^2.1.2",
     "@vitejs/plugin-vue-jsx": "^5.1.2",
     "ant-design-vue": "^4.2.6",
     "axios": "^1.13.2",
