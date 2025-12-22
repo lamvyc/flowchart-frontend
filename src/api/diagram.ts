@@ -7,7 +7,7 @@ import service from './request';
 // 'content' 可以是任何东西，但我们知道它是一个 JSON 对象，所以用 Record<string, any>
 export interface Diagram {
   id: number;
-  name: string;
+  title: string;
   user_id: number;
   created_at: string;
   updated_at: string;

@@ -16,33 +16,100 @@
       </template>
     </a-result>
   </div>
-  <div v-else class="h-screen flex flex-col">
-    <!-- 头部工具栏 -->
-    <header class="h-16 bg-white shadow-md flex justify-between items-center px-4 flex-shrink-0">
-      <div>
+
+  <!-- ✨ 布局容器 -->
+  <div v-else class="h-screen flex flex-col overflow-hidden">
+    <!-- 1. Header: 确保它在文档流中，且不可压缩 -->
+    <header
+      class="h-16 bg-white shadow-sm border-b border-gray-200 flex justify-between items-center px-4 flex-shrink-0 z-10 relative"
+    >
+      <!-- 1. 左侧：返回按钮 -->
+      <div class="flex items-center z-20">
+        <!-- z-20 确保按钮在标题之上（防止小屏幕重叠无法点击） -->
         <router-link :to="{ name: 'Dashboard' }">
-          <a-button type="link"> &lt; 返回 </a-button>
+          <a-button type="link" class="flex items-center px-0 text-gray-600 hover:text-blue-600">
+            <template #icon>
+              <!-- 简单的 SVG 返回箭头 -->
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5 mr-1"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                />
+              </svg>
+            </template>
+            返回仪表盘
+          </a-button>
         </router-link>
-        <span class="ml-4 text-xl font-bold align-middle">{{ currentDiagram.name }}</span>
       </div>
-      <div>
-        <a-button type="primary" :loading="isSaving" @click="handleSave">保存</a-button>
+
+      <!-- 2. 中间：标题和 ID (绝对居中) -->
+      <div
+        class="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center"
+      >
+        <div class="flex items-baseline gap-2">
+          <!-- 标题 -->
+          <h1 class="text-lg font-bold text-gray-800 m-0 truncate max-w-xs">
+            {{ currentDiagram?.title }}
+          </h1>
+          <!-- ID -->
+          <span class="text-xs text-gray-400 font-mono bg-gray-100 px-1.5 py-0.5 rounded">
+            ID: {{ currentDiagram?.id }}
+          </span>
+        </div>
+      </div>
+
+      <!-- 3. 右侧：保存按钮 -->
+      <div class="flex items-center z-20">
+        <a-button type="primary" :loading="isSaving" @click="handleSave">
+          <template #icon>
+            <!-- 简单的 SVG 保存图标 -->
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-4 w-4 mr-1 inline-block -mt-1"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
+              />
+            </svg>
+          </template>
+          保存流程图
+        </a-button>
       </div>
     </header>
 
-    <!-- 编辑器主区域 -->
-    <main class="flex-1 flex overflow-hidden">
-      <!-- 1. 左侧组件面板 (Stencil) -->
-      <aside class="w-56 bg-white border-r border-gray-200 flex-shrink-0">
-        <h2 class="text-center text-lg font-semibold py-3 border-b">组件</h2>
-        <!-- Stencil 的容器 -->
-        <div id="stencil-container" ref="stencilContainer"></div>
+    <!-- 2. Main: 占据剩余空间 -->
+    <main class="flex-1 flex overflow-hidden relative">
+      <!-- 左侧 Stencil -->
+      <aside class="w-56 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 z-10">
+        <h2 class="text-center text-lg font-semibold py-3 border-b bg-gray-50">组件</h2>
+        <div
+          id="stencil-container"
+          ref="stencilContainer"
+          class="flex-1 overflow-y-auto relative"
+        ></div>
       </aside>
 
-      <!-- 2. 右侧画布区域 -->
-      <div class="flex-1 relative">
-        <!-- 画布的容器 -->
-        <div id="canvas-container" ref="canvasContainer" class="w-full h-full"></div>
+      <!-- 右侧 Canvas -->
+      <div class="flex-1 bg-gray-100 relative overflow-hidden">
+        <!-- 
+           ✨ 关键：给 canvas container 一个绝对定位，让它撑满父容器 
+           这样 X6 的尺寸计算就会基于这个绝对定位的容器，而不是外面的 flow
+        -->
+        <div id="canvas-container" ref="canvasContainer" class="absolute inset-0"></div>
       </div>
     </main>
   </div>
@@ -164,6 +231,8 @@ onMounted(async () => {
   try {
     // 1. 先获取流程图的基础信息
     const data = await getDiagramById(diagramId);
+    console.log('API 返回数据:', data);
+
     currentDiagram.value = data;
   } catch (error) {
     console.error('获取流程图详情失败:', error);
