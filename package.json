@@ -18,8 +18,11 @@
   },
   "dependencies": {
     "@antv/x6": "^2.18.1",
+    "@antv/x6-plugin-clipboard": "^2.0.0",
     "@antv/x6-plugin-export": "^2.0.0",
     "@antv/x6-plugin-history": "^2.0.0",
+    "@antv/x6-plugin-keyboard": "^2.0.0",
+    "@antv/x6-plugin-selection": "^2.0.0",
     "@antv/x6-plugin-stencil": "^2.1.5",
     "@antv/x6-vue-shape": "^2.1.2",
     "@vitejs/plugin-vue-jsx": "^5.1.2",

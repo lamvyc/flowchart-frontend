@@ -90,12 +90,10 @@
         <a-button @click="zoomToFit" title="适应画布">Fit</a-button>
         <a-button @click="zoomReset" title="100%">1:1</a-button>
       </a-button-group>
-
       <span class="text-xs text-gray-500 ml-2">{{ Math.round(zoomScale * 100) }}%</span>
 
       <div class="w-px h-4 bg-gray-300 mx-2"></div>
 
-      <!-- ✨ 新增：导出按钮 -->
       <a-button size="small" @click="handleExport" title="下载为PNG图片">
         <template #icon>
           <svg
@@ -115,6 +113,10 @@
         </template>
         导出图片
       </a-button>
+
+      <div class="w-px h-4 bg-gray-300 mx-2"></div>
+
+      <span class="text-xs text-gray-400"> 快捷键: Delete删除, Ctrl+C复制, Ctrl+V粘贴 </span>
     </div>
 
     <!-- 主工作区 -->
@@ -183,8 +185,12 @@ import { Spin, Result, Button, message, Form, Input, Slider } from 'ant-design-v
 import { Graph, Node } from '@antv/x6';
 import { Stencil } from '@antv/x6-plugin-stencil';
 import { History } from '@antv/x6-plugin-history';
-// ✨ 引入 Export 插件
 import { Export } from '@antv/x6-plugin-export';
+// ✨ 引入新插件
+import { Selection } from '@antv/x6-plugin-selection';
+import { Keyboard } from '@antv/x6-plugin-keyboard';
+import { Clipboard } from '@antv/x6-plugin-clipboard';
+
 import { getDiagramById, updateDiagram } from '@/api/diagram';
 import type { Diagram } from '@/api/diagram';
 
@@ -269,11 +275,75 @@ const initGraph = () => {
     },
   });
 
-  // 集成插件
+  // ✨ 集成插件
   graph.use(new History({ enabled: true }));
   // ✨ 集成 Export 插件
   graph.use(new Export());
+  // 1. 选区插件
+  graph.use(
+    new Selection({
+      enabled: true,
+      multiple: true, // 支持多选
+      rubberband: true, // 支持框选
+      movable: true, // 选中的节点可以一起移动
+      showNodeSelectionBox: true, // 显示节点的选择框
+    })
+  );
+  // 2. 键盘插件
+  graph.use(new Keyboard({ enabled: true }));
+  // 3. 剪贴板插件
+  graph.use(new Clipboard({ enabled: true }));
 
+  // ✨ 绑定快捷键
+
+  // 复制
+  graph.bindKey(['meta+c', 'ctrl+c'], () => {
+    const cells = graph!.getSelectedCells();
+    if (cells.length) {
+      graph!.copy(cells);
+    }
+    return false;
+  });
+
+  // 粘贴
+  graph.bindKey(['meta+v', 'ctrl+v'], () => {
+    if (!graph!.isClipboardEmpty()) {
+      const cells = graph!.paste({ offset: 32 });
+      graph!.cleanSelection();
+      graph!.select(cells);
+    }
+    return false;
+  });
+
+  // 撤销/重做
+  graph.bindKey(['meta+z', 'ctrl+z'], () => {
+    if (graph!.canUndo()) graph!.undo();
+    return false;
+  });
+  graph.bindKey(['meta+shift+z', 'ctrl+shift+z'], () => {
+    if (graph!.canRedo()) graph!.redo();
+    return false;
+  });
+
+  // 删除
+  graph.bindKey(['backspace', 'delete'], () => {
+    const cells = graph!.getSelectedCells();
+    if (cells.length) {
+      graph!.removeCells(cells);
+    }
+    return false;
+  });
+
+  // 全选
+  graph.bindKey(['meta+a', 'ctrl+a'], () => {
+    const nodes = graph!.getNodes();
+    if (nodes) {
+      graph!.select(nodes);
+    }
+    return false;
+  });
+
+  // 历史记录监听
   graph.on('history:change', () => {
     canUndo.value = graph!.canUndo();
     canRedo.value = graph!.canRedo();
@@ -404,23 +474,35 @@ const initGraph = () => {
     });
   });
 
-  // ✨ 节点点击事件
-  graph.on('node:click', ({ node }) => {
-    selectedNode.value = node;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const attrs = node.getAttrs() as Record<string, any>;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const labelData = (node as any).getLabel();
-    nodeForm.label = typeof labelData === 'string' ? labelData : labelData?.text || '';
-    // 回显样式
-    nodeForm.fill = attrs.body?.fill || '#ffffff';
-    nodeForm.stroke = attrs.body?.stroke || '#000000';
-    nodeForm.strokeWidth = attrs.body?.strokeWidth || 1;
+  // 选中事件 (修改)
+  // 当 Selection 插件启用后，我们应该监听 'selection:changed' 而不是简单的 'node:click'
+  // 这样可以处理多选的情况，以及点击空白取消选择
+  // 选中事件 (修改)
+  graph.on('selection:changed', ({ selected }) => {
+    // 1. 先提取变量，方便 TS 类型推断
+    const cell = selected[0];
+
+    // 2. 严谨判断：长度为1，且 cell 存在，且 cell 是节点
+    if (selected.length === 1 && cell && cell.isNode()) {
+      const node = cell as Node;
+      selectedNode.value = node;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const attrs = node.getAttrs() as Record<string, any>;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const labelData = (node as any).getLabel();
+
+      nodeForm.label = typeof labelData === 'string' ? labelData : labelData?.text || '';
+      nodeForm.fill = attrs.body?.fill || '#ffffff';
+      nodeForm.stroke = attrs.body?.stroke || '#000000';
+      nodeForm.strokeWidth = attrs.body?.strokeWidth || 1;
+    } else {
+      // 选中了多个，或者选中了连线，或者没选中 -> 隐藏属性面板
+      selectedNode.value = null;
+    }
   });
 
-  graph.on('blank:click', () => {
-    selectedNode.value = null;
-  });
+  // 之前的 node:click 和 blank:click 可以移除了，selection:changed 已经涵盖了它们
 
   if (currentDiagram.value?.content && Object.keys(currentDiagram.value.content).length > 0) {
     graph.fromJSON(currentDiagram.value.content);
@@ -436,7 +518,6 @@ const zoomIn = () => graph?.zoom(0.1);
 const zoomOut = () => graph?.zoom(-0.1);
 const zoomToFit = () => graph?.zoomToFit({ padding: 20 });
 const zoomReset = () => graph?.zoomTo(1);
-
 // ✨ 导出图片函数
 const handleExport = () => {
   if (!graph) return;
