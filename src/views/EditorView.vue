@@ -111,16 +111,58 @@
         -->
         <div id="canvas-container" ref="canvasContainer" class="absolute inset-0"></div>
       </div>
+
+      <!-- ✨ 3. 新增：右侧属性面板 (当选中节点时显示) -->
+      <aside
+        v-if="selectedNode"
+        class="w-64 bg-white border-l border-gray-200 flex flex-col flex-shrink-0 z-10 shadow-lg transition-all"
+      >
+        <h2 class="text-center text-lg font-semibold py-3 border-b bg-gray-50">属性设置</h2>
+        <div class="p-4 flex-1 overflow-y-auto">
+          <a-form layout="vertical">
+            <a-form-item label="文本内容">
+              <a-input v-model:value="nodeForm.label" @change="updateNode" />
+            </a-form-item>
+
+            <a-form-item label="背景颜色">
+              <input
+                type="color"
+                v-model="nodeForm.fill"
+                class="w-full h-10 p-1 border rounded cursor-pointer"
+                @input="updateNode"
+              />
+            </a-form-item>
+
+            <a-form-item label="边框颜色">
+              <input
+                type="color"
+                v-model="nodeForm.stroke"
+                class="w-full h-10 p-1 border rounded cursor-pointer"
+                @input="updateNode"
+              />
+            </a-form-item>
+
+            <a-form-item label="边框宽度">
+              <a-slider
+                v-model:value="nodeForm.strokeWidth"
+                :min="1"
+                :max="10"
+                @change="updateNode"
+              />
+            </a-form-item>
+          </a-form>
+        </div>
+      </aside>
     </main>
   </div>
 </template>
-
+<!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, nextTick } from 'vue';
+import { onMounted, onBeforeUnmount, ref, reactive, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
-import { Spin, Result, Button, message } from 'ant-design-vue';
+import { Spin, Result, Button, message, Form, Input, Slider } from 'ant-design-vue';
 // ✨ v2 核心导入
-import { Graph } from '@antv/x6';
+import { Graph, Node } from '@antv/x6';
 import { Stencil } from '@antv/x6-plugin-stencil';
 import { getDiagramById, updateDiagram } from '@/api/diagram';
 import type { Diagram } from '@/api/diagram';
@@ -129,6 +171,10 @@ import type { Diagram } from '@/api/diagram';
 const ASpin = Spin;
 const AResult = Result;
 const AButton = Button;
+const AForm = Form;
+const AFormItem = Form.Item;
+const AInput = Input;
+const ASlider = Slider;
 
 const route = useRoute();
 const isLoading = ref(true);
@@ -140,12 +186,20 @@ const canvasContainer = ref<HTMLElement | null>(null);
 const stencilContainer = ref<HTMLElement | null>(null);
 let graph: Graph | null = null;
 
+// 属性面板状态
+const selectedNode = ref<Node | null>(null);
+const nodeForm = reactive({
+  label: '',
+  fill: '#ffffff',
+  stroke: '#000000',
+  strokeWidth: 1,
+});
+
 /**
  * 初始化 X6 画布
  */
 const initGraph = () => {
   if (!canvasContainer.value) return;
-
   // 1. 创建 Graph 实例
   graph = new Graph({
     container: canvasContainer.value,
@@ -187,7 +241,6 @@ const initGraph = () => {
       },
     },
   });
-
   // 2. 初始化 Stencil (组件面板)
   if (stencilContainer.value && graph) {
     const stencil = new Stencil({
@@ -265,24 +318,24 @@ const initGraph = () => {
       height: 40,
       label: '矩形',
       ports: { ...ports },
+      attrs: { body: { fill: '#ffffff', stroke: '#000000', strokeWidth: 1 } },
     });
-
     const circle = graph.createNode({
       shape: 'circle',
       width: 60,
       height: 60,
       label: '圆形',
       ports: { ...ports },
+      attrs: { body: { fill: '#ffffff', stroke: '#000000', strokeWidth: 1 } },
     });
-
     const rhombus = graph
       .createNode({
         shape: 'rect',
         width: 80,
         height: 80,
         label: '判断',
-        attrs: { body: { rx: 10, ry: 10 } }, // 简单的圆角矩形模拟菱形
         ports: { ...ports },
+        attrs: { body: { rx: 10, ry: 10, fill: '#ffffff', stroke: '#000000', strokeWidth: 1 } },
       })
       .rotate(45);
 
@@ -290,35 +343,74 @@ const initGraph = () => {
     stencil.load([rect.clone(), circle.clone(), rhombus.clone()], 'basic');
   }
 
-  // ✨ 4. 事件监听：鼠标悬浮时显示/隐藏连接桩
+  // --- 事件监听 ---
+
   graph.on('node:mouseenter', () => {
     const container = document.getElementById('canvas-container');
-    const ports = container?.querySelectorAll('.x6-port-body') as NodeListOf<HTMLElement>;
-    ports.forEach((port) => {
+    // 使用 any 绕过 NodeListOf 检查，或者修改 eslintrc 关闭 no-undef
+    const ports = container?.querySelectorAll('.x6-port-body') as any;
+    ports.forEach((port: HTMLElement) => {
       port.style.visibility = 'visible';
     });
   });
 
   graph.on('node:mouseleave', () => {
     const container = document.getElementById('canvas-container');
-    const ports = container?.querySelectorAll('.x6-port-body') as NodeListOf<HTMLElement>;
-    ports.forEach((port) => {
+    const ports = container?.querySelectorAll('.x6-port-body') as any;
+    ports.forEach((port: HTMLElement) => {
       port.style.visibility = 'hidden';
     });
   });
 
-  // 5. 加载已保存的数据
+  // ✨ 节点点击事件
+  graph.on('node:click', ({ node }) => {
+    selectedNode.value = node;
+
+    // 1. 获取属性并断言为 Record<string, any>，避免 typescript 报错
+    const attrs = node.getAttrs() as Record<string, any>;
+
+    // 2. 获取 Label
+    // 在 X6 v2 TS 定义中可能缺失 getLabel，但运行时存在。
+    const labelData = (node as any).getLabel();
+
+    // 处理 label 可能是字符串或对象的情况
+    nodeForm.label = typeof labelData === 'string' ? labelData : labelData?.text || '';
+
+    // 3. 回显样式
+    nodeForm.fill = attrs.body?.fill || '#ffffff';
+    nodeForm.stroke = attrs.body?.stroke || '#000000';
+    nodeForm.strokeWidth = attrs.body?.strokeWidth || 1;
+  });
+
+  graph.on('blank:click', () => {
+    selectedNode.value = null;
+  });
+
   if (currentDiagram.value?.content && Object.keys(currentDiagram.value.content).length > 0) {
     graph.fromJSON(currentDiagram.value.content);
-  } else {
-    // 如果是空图，可选：添加一个默认节点
-    // graph.addNode(...)
   }
 };
 
 /**
- * 处理保存
+ * 更新节点属性
  */
+const updateNode = () => {
+  const node = selectedNode.value;
+  if (!node) return;
+
+  // ✨ 强制调用 setLabel
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (node as any).setLabel(nodeForm.label);
+
+  node.setAttrs({
+    body: {
+      fill: nodeForm.fill,
+      stroke: nodeForm.stroke,
+      strokeWidth: nodeForm.strokeWidth,
+    },
+  });
+};
+
 const handleSave = async () => {
   if (!graph || !currentDiagram.value) return;
 
@@ -377,7 +469,6 @@ onMounted(async () => {
     }
   }
 });
-
 onBeforeUnmount(() => {
   graph?.dispose();
 });
