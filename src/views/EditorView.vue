@@ -1,4 +1,3 @@
-<!-- src/views/EditorView.vue -->
 <template>
   <!-- 1. 加载中状态 -->
   <div v-if="isLoading" class="flex items-center justify-center h-screen">
@@ -24,12 +23,9 @@
   <div v-else class="h-screen flex flex-col overflow-hidden">
     <!-- 头部导航栏 -->
     <header
-      class="h-16 bg-white shadow-sm border-b border-gray-200 flex justify-between items-center px-4 flex-shrink-0 z-10 relative"
+      class="h-16 bg-white shadow-sm border-b border-gray-200 flex justify-between items-center px-4 flex-shrink-0 z-20 relative"
     >
-      <!-- 左侧：返回按钮 -->
-      <div class="flex items-center z-20">
-        <!-- z-20 确保按钮在标题之上（防止小屏幕重叠无法点击） -->
-
+      <div class="flex items-center">
         <router-link :to="{ name: 'Dashboard' }">
           <a-button type="link" class="flex items-center px-0 text-gray-600 hover:text-blue-600">
             <template #icon>
@@ -48,11 +44,10 @@
                 />
               </svg>
             </template>
-            返回仪表盘
+            返回
           </a-button>
         </router-link>
       </div>
-
       <!-- 中间：标题和 ID (绝对居中) -->
       <div
         class="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center"
@@ -67,33 +62,41 @@
         </div>
       </div>
 
-      <!-- 右侧：保存按钮 -->
-      <div class="flex items-center z-20">
-        <a-button type="primary" :loading="isSaving" @click="handleSave">
-          <template #icon>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-4 w-4 mr-1 inline-block -mt-1"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
-              />
-            </svg>
-          </template>
-          保存流程图
-        </a-button>
+      <div class="flex items-center">
+        <a-button type="primary" :loading="isSaving" @click="handleSave">保存</a-button>
       </div>
     </header>
 
+    <!-- ✨ 新增：顶部工具栏 (Toolbar) -->
+    <div
+      class="h-10 bg-gray-50 border-b border-gray-200 flex items-center px-4 flex-shrink-0 gap-2"
+    >
+      <!-- 撤销/重做 -->
+      <a-button-group size="small">
+        <a-button @click="onUndo" :disabled="!canUndo" title="撤销">
+          <template #icon>↺</template>
+        </a-button>
+        <a-button @click="onRedo" :disabled="!canRedo" title="重做">
+          <template #icon>↻</template>
+        </a-button>
+      </a-button-group>
+
+      <div class="w-px h-4 bg-gray-300 mx-2"></div>
+
+      <!-- 缩放控制 -->
+      <a-button-group size="small">
+        <a-button @click="zoomIn" title="放大">+</a-button>
+        <a-button @click="zoomOut" title="缩小">-</a-button>
+        <a-button @click="zoomToFit" title="适应画布">Fit</a-button>
+        <a-button @click="zoomReset" title="100%">1:1</a-button>
+      </a-button-group>
+
+      <span class="text-xs text-gray-500 ml-2">{{ Math.round(zoomScale * 100) }}%</span>
+    </div>
+
     <!-- 主工作区 -->
     <main class="flex-1 flex overflow-hidden relative">
-      <!-- 左侧组件面板 (Stencil) -->
+      <!-- 左侧组件面板 -->
       <aside class="w-56 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 z-10">
         <h2 class="text-center text-lg font-semibold py-3 border-b bg-gray-50">组件</h2>
         <div
@@ -105,17 +108,13 @@
 
       <!-- 右侧画布区域 -->
       <div class="flex-1 bg-gray-100 relative overflow-hidden">
-        <!-- 
-           ✨ 关键：给 canvas container 一个绝对定位，让它撑满父容器 
-           这样 X6 的尺寸计算就会基于这个绝对定位的容器，而不是外面的 flow
-        -->
         <div id="canvas-container" ref="canvasContainer" class="absolute inset-0"></div>
       </div>
 
-      <!-- ✨ 3. 新增：右侧属性面板 (当选中节点时显示) -->
+      <!-- 右侧属性面板 -->
       <aside
         v-if="selectedNode"
-        class="w-64 bg-white border-l border-gray-200 flex flex-col flex-shrink-0 z-10 shadow-lg transition-all"
+        class="w-64 bg-white border-l border-gray-200 flex flex-col flex-shrink-0 z-10 shadow-lg"
       >
         <h2 class="text-center text-lg font-semibold py-3 border-b bg-gray-50">属性设置</h2>
         <div class="p-4 flex-1 overflow-y-auto">
@@ -123,7 +122,6 @@
             <a-form-item label="文本内容">
               <a-input v-model:value="nodeForm.label" @change="updateNode" />
             </a-form-item>
-
             <a-form-item label="背景颜色">
               <input
                 type="color"
@@ -132,7 +130,6 @@
                 @input="updateNode"
               />
             </a-form-item>
-
             <a-form-item label="边框颜色">
               <input
                 type="color"
@@ -141,7 +138,6 @@
                 @input="updateNode"
               />
             </a-form-item>
-
             <a-form-item label="边框宽度">
               <a-slider
                 v-model:value="nodeForm.strokeWidth"
@@ -156,21 +152,23 @@
     </main>
   </div>
 </template>
-<!-- eslint-disable @typescript-eslint/no-explicit-any -->
+
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, reactive, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import { Spin, Result, Button, message, Form, Input, Slider } from 'ant-design-vue';
-// ✨ v2 核心导入
+// ✨ 引入 History 插件
 import { Graph, Node } from '@antv/x6';
 import { Stencil } from '@antv/x6-plugin-stencil';
+import { History } from '@antv/x6-plugin-history';
 import { getDiagramById, updateDiagram } from '@/api/diagram';
 import type { Diagram } from '@/api/diagram';
 
-// 重命名 antd 组件
+// 组件重命名
 const ASpin = Spin;
 const AResult = Result;
 const AButton = Button;
+const AButtonGroup = Button.Group; // ✨ 新增按钮组
 const AForm = Form;
 const AFormItem = Form.Item;
 const AInput = Input;
@@ -194,20 +192,25 @@ const nodeForm = reactive({
   stroke: '#000000',
   strokeWidth: 1,
 });
-
+// ✨ 工具栏状态
+const canUndo = ref(false);
+const canRedo = ref(false);
+const zoomScale = ref(1);
 /**
  * 初始化 X6 画布
  */
 const initGraph = () => {
   if (!canvasContainer.value) return;
-  // 1. 创建 Graph 实例
+
   graph = new Graph({
     container: canvasContainer.value,
     grid: true,
     autoResize: true,
     panning: true, // 开启画布平移
-    mousewheel: true, // 开启滚轮缩放
-
+    mousewheel: {
+      enabled: true, // 开启滚轮缩放
+      modifiers: ['ctrl', 'meta'], // 按住 Ctrl/Meta 滚动缩放
+    },
     // 交互配置
     interacting: {
       nodeMovable: true,
@@ -241,7 +244,26 @@ const initGraph = () => {
       },
     },
   });
-  // 2. 初始化 Stencil (组件面板)
+
+  // ✨ 集成 History 插件
+  graph.use(
+    new History({
+      enabled: true,
+    })
+  );
+
+  // ✨ 监听历史记录变化，更新按钮状态
+  graph.on('history:change', () => {
+    canUndo.value = graph!.canUndo();
+    canRedo.value = graph!.canRedo();
+  });
+
+  // ✨ 监听缩放变化
+  graph.on('scale', ({ sx }) => {
+    zoomScale.value = sx;
+  });
+
+  // Stencil 初始化
   if (stencilContainer.value && graph) {
     const stencil = new Stencil({
       title: '基础节点',
@@ -311,7 +333,7 @@ const initGraph = () => {
       items: [{ group: 'top' }, { group: 'right' }, { group: 'bottom' }, { group: 'left' }],
     };
 
-    // ✨ 3. 创建节点原型 (v2 API: graph.createNode)
+    // 创建节点原型
     const rect = graph.createNode({
       shape: 'rect',
       width: 100,
@@ -338,16 +360,14 @@ const initGraph = () => {
         attrs: { body: { rx: 10, ry: 10, fill: '#ffffff', stroke: '#000000', strokeWidth: 1 } },
       })
       .rotate(45);
-
     // 加载原型到 Stencil
     stencil.load([rect.clone(), circle.clone(), rhombus.clone()], 'basic');
   }
 
-  // --- 事件监听 ---
-
+  // 事件监听
   graph.on('node:mouseenter', () => {
     const container = document.getElementById('canvas-container');
-    // 使用 any 绕过 NodeListOf 检查，或者修改 eslintrc 关闭 no-undef
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ports = container?.querySelectorAll('.x6-port-body') as any;
     ports.forEach((port: HTMLElement) => {
       port.style.visibility = 'visible';
@@ -356,6 +376,7 @@ const initGraph = () => {
 
   graph.on('node:mouseleave', () => {
     const container = document.getElementById('canvas-container');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ports = container?.querySelectorAll('.x6-port-body') as any;
     ports.forEach((port: HTMLElement) => {
       port.style.visibility = 'hidden';
@@ -365,18 +386,12 @@ const initGraph = () => {
   // ✨ 节点点击事件
   graph.on('node:click', ({ node }) => {
     selectedNode.value = node;
-
-    // 1. 获取属性并断言为 Record<string, any>，避免 typescript 报错
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const attrs = node.getAttrs() as Record<string, any>;
-
-    // 2. 获取 Label
-    // 在 X6 v2 TS 定义中可能缺失 getLabel，但运行时存在。
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const labelData = (node as any).getLabel();
-
-    // 处理 label 可能是字符串或对象的情况
     nodeForm.label = typeof labelData === 'string' ? labelData : labelData?.text || '';
-
-    // 3. 回显样式
+    // 回显样式
     nodeForm.fill = attrs.body?.fill || '#ffffff';
     nodeForm.stroke = attrs.body?.stroke || '#000000';
     nodeForm.strokeWidth = attrs.body?.strokeWidth || 1;
@@ -388,48 +403,39 @@ const initGraph = () => {
 
   if (currentDiagram.value?.content && Object.keys(currentDiagram.value.content).length > 0) {
     graph.fromJSON(currentDiagram.value.content);
+    // ✨ 加载完成后，清除初始的历史记录栈，防止用户撤销到空白状态
+    graph.cleanHistory();
   }
 };
 
-/**
- * 更新节点属性
- */
+// ✨ 工具栏操作函数
+const onUndo = () => graph?.undo();
+const onRedo = () => graph?.redo();
+const zoomIn = () => graph?.zoom(0.1);
+const zoomOut = () => graph?.zoom(-0.1);
+const zoomToFit = () => graph?.zoomToFit({ padding: 20 });
+const zoomReset = () => graph?.zoomTo(1);
+
 const updateNode = () => {
   const node = selectedNode.value;
   if (!node) return;
-
-  // ✨ 强制调用 setLabel
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (node as any).setLabel(nodeForm.label);
-
   node.setAttrs({
-    body: {
-      fill: nodeForm.fill,
-      stroke: nodeForm.stroke,
-      strokeWidth: nodeForm.strokeWidth,
-    },
+    body: { fill: nodeForm.fill, stroke: nodeForm.stroke, strokeWidth: nodeForm.strokeWidth },
   });
 };
 
 const handleSave = async () => {
   if (!graph || !currentDiagram.value) return;
-
   isSaving.value = true;
   try {
-    // ✨ 关键修正：获取完整的画布数据
     const graphData = graph.toJSON();
-
-    const updatedDiagram = await updateDiagram(currentDiagram.value.id, {
-      // ✨ 关键修正：确保发送的是 content 字段
-      content: graphData,
-    });
-
-    // ✨ 最佳实践：保存成功后，用后端返回的最新数据更新本地状态
-    if (updatedDiagram && currentDiagram.value) {
+    const updatedDiagram = await updateDiagram(currentDiagram.value.id, { content: graphData });
+    if (updatedDiagram) {
       currentDiagram.value.content = updatedDiagram.content;
       currentDiagram.value.updated_at = updatedDiagram.updated_at;
     }
-
     message.success('保存成功！');
   } catch (error) {
     console.error('保存失败:', error);
@@ -438,7 +444,6 @@ const handleSave = async () => {
   }
 };
 
-// --- 生命周期钩子 ---
 onMounted(async () => {
   isLoading.value = true;
   const diagramId = Number(route.params.id);
