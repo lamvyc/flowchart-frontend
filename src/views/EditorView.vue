@@ -67,7 +67,7 @@
       </div>
     </header>
 
-    <!-- ✨ 新增：顶部工具栏 (Toolbar) -->
+    <!-- 顶部工具栏 -->
     <div
       class="h-10 bg-gray-50 border-b border-gray-200 flex items-center px-4 flex-shrink-0 gap-2"
     >
@@ -92,6 +92,29 @@
       </a-button-group>
 
       <span class="text-xs text-gray-500 ml-2">{{ Math.round(zoomScale * 100) }}%</span>
+
+      <div class="w-px h-4 bg-gray-300 mx-2"></div>
+
+      <!-- ✨ 新增：导出按钮 -->
+      <a-button size="small" @click="handleExport" title="下载为PNG图片">
+        <template #icon>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-4 w-4 inline-block"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+            />
+          </svg>
+        </template>
+        导出图片
+      </a-button>
     </div>
 
     <!-- 主工作区 -->
@@ -157,10 +180,11 @@
 import { onMounted, onBeforeUnmount, ref, reactive, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import { Spin, Result, Button, message, Form, Input, Slider } from 'ant-design-vue';
-// ✨ 引入 History 插件
 import { Graph, Node } from '@antv/x6';
 import { Stencil } from '@antv/x6-plugin-stencil';
 import { History } from '@antv/x6-plugin-history';
+// ✨ 引入 Export 插件
+import { Export } from '@antv/x6-plugin-export';
 import { getDiagramById, updateDiagram } from '@/api/diagram';
 import type { Diagram } from '@/api/diagram';
 
@@ -168,7 +192,7 @@ import type { Diagram } from '@/api/diagram';
 const ASpin = Spin;
 const AResult = Result;
 const AButton = Button;
-const AButtonGroup = Button.Group; // ✨ 新增按钮组
+const AButtonGroup = Button.Group;
 const AForm = Form;
 const AFormItem = Form.Item;
 const AInput = Input;
@@ -192,7 +216,7 @@ const nodeForm = reactive({
   stroke: '#000000',
   strokeWidth: 1,
 });
-// ✨ 工具栏状态
+// 工具栏状态
 const canUndo = ref(false);
 const canRedo = ref(false);
 const zoomScale = ref(1);
@@ -245,14 +269,11 @@ const initGraph = () => {
     },
   });
 
-  // ✨ 集成 History 插件
-  graph.use(
-    new History({
-      enabled: true,
-    })
-  );
+  // 集成插件
+  graph.use(new History({ enabled: true }));
+  // ✨ 集成 Export 插件
+  graph.use(new Export());
 
-  // ✨ 监听历史记录变化，更新按钮状态
   graph.on('history:change', () => {
     canUndo.value = graph!.canUndo();
     canRedo.value = graph!.canRedo();
@@ -408,13 +429,23 @@ const initGraph = () => {
   }
 };
 
-// ✨ 工具栏操作函数
+// 工具栏操作函数
 const onUndo = () => graph?.undo();
 const onRedo = () => graph?.redo();
 const zoomIn = () => graph?.zoom(0.1);
 const zoomOut = () => graph?.zoom(-0.1);
 const zoomToFit = () => graph?.zoomToFit({ padding: 20 });
 const zoomReset = () => graph?.zoomTo(1);
+
+// ✨ 导出图片函数
+const handleExport = () => {
+  if (!graph) return;
+  graph.exportPNG(currentDiagram.value?.title || 'flowchart', {
+    padding: 20,
+    backgroundColor: '#ffffff', // 导出时添加白色背景，否则是透明的
+    quality: 1,
+  });
+};
 
 const updateNode = () => {
   const node = selectedNode.value;
@@ -447,33 +478,25 @@ const handleSave = async () => {
 onMounted(async () => {
   isLoading.value = true;
   const diagramId = Number(route.params.id);
-
   if (isNaN(diagramId)) {
     isLoading.value = false;
     return;
   }
-
   try {
-    // 1. 先获取流程图的基础信息
     const data = await getDiagramById(diagramId);
-    console.log('API 返回数据:', data);
-
     currentDiagram.value = data;
   } catch (error) {
-    console.error('获取流程图详情失败:', error);
-    currentDiagram.value = null; // 加载失败，设置为空
+    console.error('获取详情失败:', error);
+    currentDiagram.value = null;
   } finally {
-    // ✨ 关键修正：无论成功或失败，在 finally 中初始化画布
-    // 这样能确保即使 API 失败，页面也能渲染出画布（或错误信息）
     isLoading.value = false;
-    // 仅在成功获取到 diagram 数据后才初始化画布
     if (currentDiagram.value) {
-      // 使用 nextTick 确保 DOM 已经更新
       await nextTick();
       initGraph();
     }
   }
 });
+
 onBeforeUnmount(() => {
   graph?.dispose();
 });
