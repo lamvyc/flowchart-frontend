@@ -236,7 +236,10 @@ const initGraph = () => {
     container: canvasContainer.value,
     grid: true,
     autoResize: true,
-    panning: true, // 开启画布平移
+    panning: {
+      enabled: true, // 开启画布平移
+      modifiers: 'alt',
+    },
     mousewheel: {
       enabled: true, // 开启滚轮缩放
       modifiers: ['ctrl', 'meta'], // 按住 Ctrl/Meta 滚动缩放
