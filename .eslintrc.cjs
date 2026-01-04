@@ -36,6 +36,7 @@ module.exports = {
     // 关闭 Vue 组件名必须是多个单词的规则
     'vue/multi-word-component-names': 'off',
     'no-undef': 'off',
+    '@typescript-eslint/no-explicit-any': 'off',
 
     // 你可以在这里添加更多自定义规则
     // 'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',

@@ -50,3 +50,9 @@ AntV X6 的撤销/重做功能需要单独安装 `@antv/x6-plugin-history` 插�
 2. **键盘快捷键**：支持 `Delete` 键删除节点，`Ctrl+Z` 撤销，`Ctrl+C/V` 复制粘贴等。
 
 这需要引入 X6 的 **Selection（选区）** 和 **Keyboard（键盘）** 插件。
+
+
+------
+
+### 实现离线模式
+**详情见Offline.md文件**

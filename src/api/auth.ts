@@ -1,3 +1,4 @@
+// src/api/auth.ts
 import service from './request';
 
 // 根据你的后端简报，定义 User 和 Token 的类型
